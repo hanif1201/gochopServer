@@ -45,6 +45,15 @@ if (process.env.NODE_ENV === "development") {
 // Static folder
 app.use("/uploads", express.static("uploads"));
 
+// Add before mounting other routers
+app.get("/", (req, res) => {
+  res.json({
+    message: "Welcome to GoChop API",
+    documentation:
+      "Available routes: /api/auth, /api/users, /api/restaurants, /api/menu, /api/orders, /api/riders, /api/admin",
+  });
+});
+
 // Mount routers
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);

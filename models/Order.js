@@ -67,8 +67,8 @@ const OrderSchema = new mongoose.Schema({
       },
       coordinates: {
         type: [Number],
+        required: true,
       },
-      index: "2dsphere", // Add this for geospatial queries
     },
     instructions: String,
   },
