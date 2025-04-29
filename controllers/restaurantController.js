@@ -3,6 +3,8 @@ const User = require("../models/User");
 const MenuItem = require("../models/MenuItem");
 const config = require("../config/config");
 const geocoder = require("../utils/geocoder");
+const Order = require("../models/Order");
+const mongoose = require("mongoose");
 
 // @desc    Get all restaurants with filtering and pagination
 // @route   GET /api/restaurants
@@ -384,6 +386,116 @@ exports.getRestaurantMenu = async (req, res, next) => {
       success: true,
       count: menuItems.length,
       data: menuItems,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Get restaurant analytics
+// @route   GET /api/restaurants/:id/analytics
+// @access  Private (restaurant owner or admin)
+exports.getRestaurantAnalytics = async (req, res, next) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: "Restaurant not found",
+      });
+    }
+
+    // Check ownership
+    if (
+      restaurant.user.toString() !== req.user.id &&
+      req.user.role !== config.roles.ADMIN
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to view these analytics",
+      });
+    }
+
+    const period = req.query.period || "30days";
+    let startDate = new Date();
+
+    switch (period) {
+      case "week":
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+      case "month":
+        startDate.setDate(startDate.getDate() - 30);
+        break;
+      case "year":
+        startDate.setDate(startDate.getDate() - 365);
+        break;
+      default:
+        startDate.setDate(startDate.getDate() - 30);
+    }
+
+    // Get orders for the period
+    const orders = await Order.find({
+      restaurant: req.params.id,
+      createdAt: { $gte: startDate },
+    }).sort("createdAt");
+
+    // Get top selling items
+    const topItems = await MenuItem.aggregate([
+      {
+        $match: { restaurant: mongoose.Types.ObjectId(req.params.id) },
+      },
+      {
+        $lookup: {
+          from: "orders",
+          localField: "_id",
+          foreignField: "items.menuItem",
+          as: "orders",
+        },
+      },
+      {
+        $project: {
+          name: 1,
+          price: 1,
+          orderCount: { $size: "$orders" },
+        },
+      },
+      { $sort: { orderCount: -1 } },
+      { $limit: 5 },
+    ]);
+
+    // Calculate daily sales
+    const salesByDay = [];
+    let currentDate = new Date(startDate);
+
+    while (currentDate <= new Date()) {
+      const dayStart = new Date(currentDate.setHours(0, 0, 0, 0));
+      const dayEnd = new Date(currentDate.setHours(23, 59, 59, 999));
+
+      const dayOrders = orders.filter(
+        (order) => order.createdAt >= dayStart && order.createdAt <= dayEnd
+      );
+
+      salesByDay.push({
+        date: dayStart.toISOString().split("T")[0],
+        revenue: dayOrders.reduce((sum, order) => sum + order.total, 0),
+        orderCount: dayOrders.length,
+      });
+
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Calculate totals
+    const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
+    const totalOrders = orders.length;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        salesByDay,
+        topItems,
+        totalRevenue,
+        totalOrders,
+      },
     });
   } catch (err) {
     next(err);

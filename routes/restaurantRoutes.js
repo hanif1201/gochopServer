@@ -7,6 +7,7 @@ const {
   deleteRestaurant,
   toggleStatus,
   getRestaurantMenu,
+  getRestaurantAnalytics,
 } = require("../controllers/restaurantController");
 
 const { protect, authorize } = require("../middleware/auth");
@@ -33,6 +34,12 @@ router.put(
   protect,
   authorize(config.roles.ADMIN, config.roles.RESTAURANT),
   toggleStatus
+);
+router.get(
+  "/:id/analytics",
+  protect,
+  authorize(config.roles.ADMIN, config.roles.RESTAURANT),
+  getRestaurantAnalytics
 );
 
 module.exports = router;
