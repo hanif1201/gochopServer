@@ -8,29 +8,30 @@ const MenuItemSchema = new mongoose.Schema({
   },
   name: {
     type: String,
-    required: [true, "Please add a name"],
+    required: [true, "Please add a menu item name"],
     trim: true,
-    maxlength: [100, "Name can not be more than 100 characters"],
+    maxlength: [50, "Name cannot be more than 50 characters"],
   },
   description: {
     type: String,
     required: [true, "Please add a description"],
-    maxlength: [500, "Description can not be more than 500 characters"],
+    maxlength: [500, "Description cannot be more than 500 characters"],
   },
   price: {
     type: Number,
     required: [true, "Please add a price"],
+    min: [0, "Price cannot be negative"],
   },
   discountedPrice: {
     type: Number,
   },
   image: {
     type: String,
-    default: "default-food.jpg",
+    default: "default-food-image.jpg",
   },
   category: {
     type: String,
-    required: [true, "Please add a category"],
+    required: [true, "Please specify a category"],
   },
   isVeg: {
     type: Boolean,
@@ -73,8 +74,9 @@ const MenuItemSchema = new mongoose.Schema({
     },
   ],
   preparationTime: {
-    type: Number, // in minutes
-    default: 15,
+    type: Number,
+    required: [true, "Please add preparation time in minutes"],
+    min: [0, "Preparation time cannot be negative"],
   },
   spicyLevel: {
     type: Number,
@@ -86,7 +88,7 @@ const MenuItemSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
-  available: {
+  isAvailable: {
     type: Boolean,
     default: true,
   },

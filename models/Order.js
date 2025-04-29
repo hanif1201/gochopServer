@@ -74,8 +74,15 @@ const OrderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: Object.values(config.orderStatuses),
-    default: config.orderStatuses.PENDING,
+    enum: [
+      "pending",
+      "accepted",
+      "preparing",
+      "ready_for_pickup",
+      "delivered",
+      "cancelled",
+    ],
+    default: "pending",
   },
   statusHistory: [
     {
@@ -95,7 +102,7 @@ const OrderSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
-  taxAmount: {
+  tax: {
     type: Number,
     required: true,
   },
@@ -113,13 +120,13 @@ const OrderSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: Object.values(config.paymentMethods),
-    required: true,
+    enum: ["cash", "card", "wallet"],
+    default: "cash",
   },
   paymentStatus: {
     type: String,
-    enum: Object.values(config.paymentStatuses),
-    default: config.paymentStatuses.PENDING,
+    enum: ["pending", "completed", "failed", "refunded"],
+    default: "pending",
   },
   paymentId: String,
   estimatedDeliveryTime: {

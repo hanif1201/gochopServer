@@ -59,8 +59,12 @@ exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
+    // Add debug logging
+    console.log("Login attempt:", { email });
+
     // Validate email & password
     if (!email || !password) {
+      console.log("Missing email or password");
       return res.status(400).json({
         success: false,
         message: "Please provide an email and password",
@@ -69,6 +73,19 @@ exports.login = async (req, res, next) => {
 
     // Check for user
     const user = await User.findOne({ email }).select("+password");
+
+    // Add debug logging
+    console.log(
+      "User found:",
+      user
+        ? {
+            id: user._id,
+            email: user.email,
+            role: user.role,
+            isActive: user.isActive,
+          }
+        : "No user found"
+    );
 
     if (!user) {
       return res.status(401).json({
@@ -87,6 +104,9 @@ exports.login = async (req, res, next) => {
 
     // Check if password matches
     const isMatch = await user.matchPassword(password);
+
+    // Add debug logging
+    console.log("Password match:", isMatch);
 
     if (!isMatch) {
       return res.status(401).json({
