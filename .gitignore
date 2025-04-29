@@ -5,3 +5,5 @@ node_modules/
 logs/
 coverage/
 .vscode/
+# Firebase credentials
+config/firebase-service-account.json
