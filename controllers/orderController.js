@@ -34,6 +34,7 @@ exports.getOrders = async (req, res, next) => {
     // If restaurant user, only show their orders
     if (req.user.role === config.roles.RESTAURANT) {
       const restaurant = await Restaurant.findOne({ user: req.user._id });
+      console.log("Found restaurant:", restaurant?._id);
       if (!restaurant) {
         return res.status(404).json({
           success: false,
@@ -55,10 +56,13 @@ exports.getOrders = async (req, res, next) => {
       .populate("user", "name email")
       .populate("restaurant", "name");
 
-    console.log("Found orders:", orders.length);
     console.log(
-      "Orders with pending status:",
-      orders.filter((o) => o.status.toLowerCase() === "pending").length
+      "Order statuses in DB:",
+      orders.map((o) => ({
+        id: o._id,
+        status: o.status,
+        createdAt: o.createdAt,
+      }))
     );
 
     res.status(200).json({
