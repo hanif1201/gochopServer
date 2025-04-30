@@ -397,7 +397,15 @@ exports.getRestaurantMenu = async (req, res, next) => {
 // @access  Private (restaurant owner or admin)
 exports.getRestaurantAnalytics = async (req, res, next) => {
   try {
+    console.log("Analytics request:", {
+      restaurantId: req.params.id,
+      period: req.query.period,
+      userId: req.user.id,
+    });
+
     const restaurant = await Restaurant.findById(req.params.id);
+    console.log("Found restaurant:", restaurant ? restaurant._id : null);
+
     if (!restaurant) {
       return res.status(404).json({
         success: false,
@@ -437,18 +445,31 @@ exports.getRestaurantAnalytics = async (req, res, next) => {
     const orders = await Order.find({
       restaurant: req.params.id,
       createdAt: { $gte: startDate },
+      status: { $ne: "cancelled" },
     }).sort("createdAt");
 
     // Get top selling items
     const topItems = await MenuItem.aggregate([
       {
-        $match: { restaurant: mongoose.Types.ObjectId(req.params.id) },
+        $match: { restaurant: new mongoose.Types.ObjectId(req.params.id) },
       },
       {
         $lookup: {
           from: "orders",
-          localField: "_id",
-          foreignField: "items.menuItem",
+          let: { menuItemId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $in: ["$$menuItemId", "$items.menuItem"] },
+                    { $gte: ["$createdAt", startDate] },
+                    { $ne: ["$status", "cancelled"] },
+                  ],
+                },
+              },
+            },
+          ],
           as: "orders",
         },
       },
@@ -468,16 +489,24 @@ exports.getRestaurantAnalytics = async (req, res, next) => {
     let currentDate = new Date(startDate);
 
     while (currentDate <= new Date()) {
-      const dayStart = new Date(currentDate.setHours(0, 0, 0, 0));
-      const dayEnd = new Date(currentDate.setHours(23, 59, 59, 999));
+      const dayStart = new Date(currentDate);
+      dayStart.setHours(0, 0, 0, 0);
+
+      const dayEnd = new Date(currentDate);
+      dayEnd.setHours(23, 59, 59, 999);
 
       const dayOrders = orders.filter(
         (order) => order.createdAt >= dayStart && order.createdAt <= dayEnd
       );
 
+      const dayRevenue = dayOrders.reduce(
+        (sum, order) => sum + (order.total || 0),
+        0
+      );
+
       salesByDay.push({
         date: dayStart.toISOString().split("T")[0],
-        revenue: dayOrders.reduce((sum, order) => sum + order.total, 0),
+        revenue: dayRevenue,
         orderCount: dayOrders.length,
       });
 
@@ -485,8 +514,25 @@ exports.getRestaurantAnalytics = async (req, res, next) => {
     }
 
     // Calculate totals
-    const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
+    const totalRevenue = orders.reduce(
+      (sum, order) => sum + (order.total || 0),
+      0
+    );
     const totalOrders = orders.length;
+
+    // After getting orders
+    console.log("Found orders:", orders.length);
+
+    // After getting top items
+    console.log("Found top items:", topItems.length);
+
+    // Before sending response
+    console.log("Sending analytics response:", {
+      salesByDay: salesByDay.length,
+      topItems: topItems.length,
+      totalRevenue,
+      totalOrders,
+    });
 
     res.status(200).json({
       success: true,
@@ -498,6 +544,10 @@ exports.getRestaurantAnalytics = async (req, res, next) => {
       },
     });
   } catch (err) {
+    console.error("Analytics error details:", {
+      message: err.message,
+      stack: err.stack,
+    });
     next(err);
   }
 };

@@ -17,7 +17,11 @@ const router = express.Router();
 router.use(protect); // All order routes are protected
 
 // Admin only routes
-router.get("/", authorize(config.roles.ADMIN), getOrders);
+router.get(
+  "/",
+  authorize(config.roles.ADMIN, config.roles.RESTAURANT),
+  getOrders
+);
 
 // Routes for all authenticated users
 router.get("/myorders", getMyOrders);
@@ -27,7 +31,11 @@ router.get("/:id", getOrder);
 router.post("/", authorize(config.roles.CUSTOMER), createOrder);
 router.post("/:id/rate", authorize(config.roles.CUSTOMER), rateOrder);
 
-// Status update routes (authorization handled in controller)
-router.put("/:id/status", updateOrderStatus);
+// Status update routes
+router.put(
+  "/:id/status",
+  authorize(config.roles.ADMIN, config.roles.RESTAURANT),
+  updateOrderStatus
+);
 
 module.exports = router;
