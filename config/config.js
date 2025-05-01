@@ -61,7 +61,7 @@ module.exports = {
 
   // Geocoder configuration
   geocoder: {
-    provider: process.env.GEOCODER_PROVIDER || "mapquest",
+    provider: process.env.GEOCODER_PROVIDER,
     apiKey: process.env.GEOCODER_API_KEY,
   },
 

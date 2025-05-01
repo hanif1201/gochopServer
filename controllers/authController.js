@@ -58,34 +58,12 @@ exports.register = async (req, res, next) => {
 exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
+    const dashboardType = req.headers["x-dashboard-type"];
 
-    // Add debug logging
-    console.log("Login attempt:", { email });
-
-    // Validate email & password
-    if (!email || !password) {
-      console.log("Missing email or password");
-      return res.status(400).json({
-        success: false,
-        message: "Please provide an email and password",
-      });
-    }
+    console.log("Login attempt:", { email, dashboardType });
 
     // Check for user
     const user = await User.findOne({ email }).select("+password");
-
-    // Add debug logging
-    console.log(
-      "User found:",
-      user
-        ? {
-            id: user._id,
-            email: user.email,
-            role: user.role,
-            isActive: user.isActive,
-          }
-        : "No user found"
-    );
 
     if (!user) {
       return res.status(401).json({
@@ -102,12 +80,19 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    // Check if password matches
+    // Validate access based on dashboard type
+    if (dashboardType) {
+      const isAllowed = validateDashboardAccess(dashboardType, user);
+      if (!isAllowed) {
+        return res.status(403).json({
+          success: false,
+          message: `Unauthorized access. Please use the ${user.role} dashboard.`,
+        });
+      }
+    }
+
+    // Check password
     const isMatch = await user.matchPassword(password);
-
-    // Add debug logging
-    console.log("Password match:", isMatch);
-
     if (!isMatch) {
       return res.status(401).json({
         success: false,
@@ -115,15 +100,10 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    // Update FCM token if provided
-    if (req.body.fcmToken) {
-      user.fcmToken = req.body.fcmToken;
-      await user.save();
-    }
-
     // Generate and return token
     sendTokenResponse(user, 200, res);
   } catch (err) {
+    console.error("Login error:", err);
     next(err);
   }
 };
@@ -296,9 +276,32 @@ exports.resetPassword = async (req, res, next) => {
   }
 };
 
+// Helper function to validate dashboard access
+const validateDashboardAccess = (dashboardType, user) => {
+  switch (dashboardType) {
+    case "admin":
+      // Only super admin can access admin dashboard
+      return user.role === "admin" && user.isSuperAdmin;
+
+    case "restaurant":
+      // Only restaurant users can access restaurant dashboard
+      return user.role === "restaurant";
+
+    case "rider":
+      // Only riders can access rider dashboard
+      return user.role === "rider";
+
+    case "customer":
+      // Only customers can access customer dashboard
+      return user.role === "customer";
+
+    default:
+      return false;
+  }
+};
+
 // Helper function to get token from model, create cookie and send response
 const sendTokenResponse = (user, statusCode, res) => {
-  // Create token
   const token = user.getSignedJwtToken();
 
   res.status(statusCode).json({
@@ -310,6 +313,9 @@ const sendTokenResponse = (user, statusCode, res) => {
       email: user.email,
       phone: user.phone,
       role: user.role,
+      isSuperAdmin: user.isSuperAdmin,
+      address: user.address,
+      location: user.location,
     },
   });
 };

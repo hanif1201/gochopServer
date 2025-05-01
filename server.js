@@ -6,12 +6,10 @@ const socketIO = require("socket.io");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
 const errorHandler = require("./middleware/errorHandler");
+const seedUsers = require("./seeders/userSeeder");
 
 // Load env vars
 dotenv.config();
-
-// Connect to database
-connectDB();
 
 // Route files
 const authRoutes = require("./routes/authRoutes");
@@ -105,9 +103,31 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-});
+const startServer = async () => {
+  try {
+    // Connect to MongoDB first
+    const mongoose = await connectDB();
+    console.log("MongoDB Connected:", mongoose.connection.host);
+
+    // Only proceed with seeding after successful connection
+    if (mongoose.connection.readyState === 1) {
+      console.log("Starting user seeding...");
+      await seedUsers();
+      console.log("User seeding completed");
+    }
+
+    server.listen(PORT, () => {
+      console.log(
+        `Server running in ${process.env.NODE_ENV} mode on port ${PORT}`
+      );
+    });
+  } catch (error) {
+    console.error("Error starting server:", error);
+    process.exit(1);
+  }
+};
+
+startServer();
 
 // Handle unhandled promise rejections
 process.on("unhandledRejection", (err, promise) => {

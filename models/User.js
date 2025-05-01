@@ -98,16 +98,36 @@ const UserSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  isSuperAdmin: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 // Encrypt password using bcrypt
 UserSchema.pre("save", async function (next) {
+  console.log("Pre-save hook:", {
+    isModified: this.isModified("password"),
+    password: !!this.password,
+  });
+
   if (!this.isModified("password")) {
-    next();
+    return next();
   }
 
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+  try {
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(this.password, salt);
+    console.log("Password hashing:", {
+      originalLength: this.password.length,
+      hashedLength: hashedPassword.length,
+    });
+    this.password = hashedPassword;
+    next();
+  } catch (error) {
+    console.error("Password hashing error:", error);
+    next(error);
+  }
 });
 
 // Sign JWT and return token
@@ -119,7 +139,21 @@ UserSchema.methods.getSignedJwtToken = function () {
 
 // Match user entered password to hashed password in database
 UserSchema.methods.matchPassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+  console.log("Matching password:", {
+    enteredPassword: !!enteredPassword,
+    hashedPassword: !!this.password,
+    enteredLength: enteredPassword?.length,
+    hashedLength: this.password?.length,
+  });
+
+  try {
+    const isMatch = await bcrypt.compare(enteredPassword, this.password);
+    console.log("Password comparison result:", { isMatch });
+    return isMatch;
+  } catch (error) {
+    console.error("Password comparison error:", error);
+    throw error;
+  }
 };
 
 module.exports = mongoose.model("User", UserSchema);

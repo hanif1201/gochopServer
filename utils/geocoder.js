@@ -1,9 +1,15 @@
 const NodeGeocoder = require("node-geocoder");
-const config = require("../config/config");
+
+// Debug logging
+console.log("Geocoder Environment Variables:", {
+  GEOCODER_PROVIDER: process.env.GEOCODER_PROVIDER,
+  GEOCODER_API_KEY: process.env.GEOCODER_API_KEY,
+});
 
 const options = {
-  provider: config.geocoder.provider,
-  apiKey: config.geocoder.apiKey,
+  provider: process.env.GEOCODER_PROVIDER,
+  apiKey: process.env.GEOCODER_API_KEY,
+  httpAdapter: "https",
   formatter: null,
 };
 
