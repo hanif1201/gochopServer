@@ -102,6 +102,12 @@ const UserSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  refreshTokens: [
+    {
+      token: { type: String },
+      createdAt: { type: Date, default: Date.now },
+    },
+  ],
 });
 
 // Encrypt password using bcrypt

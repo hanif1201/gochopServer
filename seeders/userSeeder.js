@@ -1,6 +1,8 @@
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const mongoose = require("mongoose");
+const Order = require("../models/Order");
+const Rider = require("../models/Rider");
 
 const createUser = async (userData) => {
   try {
@@ -100,6 +102,91 @@ const seedUsers = async () => {
         type: "Point",
         coordinates: [0, 0], // Add actual coordinates
       },
+    });
+
+    // Create a test order for the rider
+    const riderUser = await User.findOne({ email: "rider@gochop.com" });
+    await Rider.deleteOne({
+      $or: [{ user: riderUser._id }, { nationalId: "RID123456" }],
+    });
+    let riderDoc = await Rider.findOne({ user: riderUser._id });
+    if (!riderDoc) {
+      riderDoc = await Rider.create({
+        user: riderUser._id,
+        firstName: "Delivery",
+        lastName: "Rider",
+        dateOfBirth: new Date("1990-01-01"),
+        nationalId: "RID123456",
+        nationalIdPhoto: "default-id.png",
+        vehicleType: "motorcycle",
+        vehicleDetails: {
+          make: "Honda",
+          model: "Wave",
+          year: 2020,
+          color: "Red",
+          licensePlate: "GR1234-20",
+        },
+        status: "online",
+        isAvailable: true,
+        isVerified: true,
+        isActive: true,
+      });
+    }
+    await Order.create({
+      user: riderUser._id,
+      restaurant: new mongoose.Types.ObjectId("68110e17d2a6861aa5256b99"),
+      rider: riderDoc._id,
+      items: [
+        {
+          name: "Test Food",
+          price: 10,
+          quantity: 1,
+          subtotal: 10,
+          menuItem: new mongoose.Types.ObjectId(),
+        },
+      ],
+      deliveryAddress: {
+        address: "Test Address",
+        location: { type: "Point", coordinates: [0, 0] },
+        instructions: "Leave at door",
+      },
+      status: "ready_for_pickup",
+      subtotal: 10,
+      tax: 1,
+      deliveryFee: 5,
+      discount: 0,
+      total: 16,
+      paymentMethod: "cash",
+      paymentStatus: "pending",
+      createdAt: new Date(),
+    });
+    await Order.create({
+      user: riderUser._id,
+      restaurant: new mongoose.Types.ObjectId("68110e17d2a6861aa5256b99"),
+      rider: riderDoc._id,
+      items: [
+        {
+          name: "Active Delivery Food",
+          price: 15,
+          quantity: 2,
+          subtotal: 30,
+          menuItem: new mongoose.Types.ObjectId(),
+        },
+      ],
+      deliveryAddress: {
+        address: "Active Delivery Address",
+        location: { type: "Point", coordinates: [1, 1] },
+        instructions: "Ring the bell",
+      },
+      status: "accepted",
+      subtotal: 30,
+      tax: 3,
+      deliveryFee: 7,
+      discount: 0,
+      total: 40,
+      paymentMethod: "cash",
+      paymentStatus: "pending",
+      createdAt: new Date(),
     });
 
     console.log("User seeding completed successfully");

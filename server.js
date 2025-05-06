@@ -19,6 +19,8 @@ const menuRoutes = require("./routes/menuRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const riderRoutes = require("./routes/riderRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const deliveriesRoutes = require("./routes/deliveriesRoutes");
+const earningsRoutes = require("./routes/earningsRoutes");
 
 const app = express();
 const server = http.createServer(app);
@@ -60,6 +62,8 @@ app.use("/api/menu", menuRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/riders", riderRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/deliveries", deliveriesRoutes);
+app.use("/api/earnings", earningsRoutes);
 
 // Error handler middleware
 app.use(errorHandler);

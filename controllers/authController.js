@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const config = require("../config/config");
 const crypto = require("crypto");
+const jwt = require("jsonwebtoken");
 
 // @desc    Register user
 // @route   POST /api/auth/register
@@ -100,8 +101,14 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    // Generate and return token
-    sendTokenResponse(user, 200, res);
+    // Generate refresh token and store it
+    const refreshToken = generateRefreshToken();
+    user.refreshTokens = user.refreshTokens || [];
+    user.refreshTokens.push({ token: refreshToken });
+    await user.save();
+
+    // Generate and return tokens
+    sendTokenResponse(user, 200, res, refreshToken);
   } catch (err) {
     console.error("Login error:", err);
     next(err);
@@ -276,6 +283,44 @@ exports.resetPassword = async (req, res, next) => {
   }
 };
 
+// @desc    Refresh access token
+// @route   POST /api/auth/refresh-token
+// @access  Public
+exports.refreshToken = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Refresh token required" });
+    }
+    const user = await User.findOne({ "refreshTokens.token": refreshToken });
+    if (!user) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid refresh token" });
+    }
+    // Optionally: check if token is expired or revoke old tokens here
+    const accessToken = user.getSignedJwtToken();
+    res.status(200).json({
+      success: true,
+      token: accessToken,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        isSuperAdmin: user.isSuperAdmin,
+        address: user.address,
+        location: user.location,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // Helper function to validate dashboard access
 const validateDashboardAccess = (dashboardType, user) => {
   switch (dashboardType) {
@@ -300,11 +345,15 @@ const validateDashboardAccess = (dashboardType, user) => {
   }
 };
 
-// Helper function to get token from model, create cookie and send response
-const sendTokenResponse = (user, statusCode, res) => {
-  const token = user.getSignedJwtToken();
+// Helper to generate a refresh token
+const generateRefreshToken = () => {
+  return crypto.randomBytes(40).toString("hex");
+};
 
-  res.status(statusCode).json({
+// Helper function to get token from model, create cookie and send response
+const sendTokenResponse = (user, statusCode, res, refreshToken) => {
+  const token = user.getSignedJwtToken();
+  const response = {
     success: true,
     token,
     user: {
@@ -317,5 +366,9 @@ const sendTokenResponse = (user, statusCode, res) => {
       address: user.address,
       location: user.location,
     },
-  });
+  };
+  if (refreshToken) {
+    response.refreshToken = refreshToken;
+  }
+  res.status(statusCode).json(response);
 };
