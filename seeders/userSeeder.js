@@ -189,6 +189,18 @@ const seedUsers = async () => {
       createdAt: new Date(),
     });
 
+    // Patch: Assign all existing orders to the test rider and set status to 'delivered' if not already assigned
+    const allOrders = await Order.find({ rider: null });
+    for (const order of allOrders) {
+      order.rider = riderDoc._id;
+      order.status = "delivered";
+      order.actualDeliveryTime = new Date();
+      await order.save();
+    }
+    console.log(
+      `Patched ${allOrders.length} orders to assign to test rider and set as delivered.`
+    );
+
     console.log("User seeding completed successfully");
   } catch (error) {
     console.error("Error in user seeding:", error);

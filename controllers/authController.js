@@ -300,11 +300,21 @@ exports.refreshToken = async (req, res, next) => {
         .status(401)
         .json({ success: false, message: "Invalid refresh token" });
     }
-    // Optionally: check if token is expired or revoke old tokens here
+    // Optionally: remove the old refresh token
+    user.refreshTokens = user.refreshTokens.filter(
+      (rt) => rt.token !== refreshToken
+    );
+
+    // Generate and store a new refresh token
+    const newRefreshToken = generateRefreshToken();
+    user.refreshTokens.push({ token: newRefreshToken });
+    await user.save();
+
     const accessToken = user.getSignedJwtToken();
     res.status(200).json({
       success: true,
       token: accessToken,
+      refreshToken: newRefreshToken,
       user: {
         id: user._id,
         name: user.name,
