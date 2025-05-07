@@ -10,6 +10,19 @@ exports.getEarningsSummary = async (req, res) => {
     status: "delivered",
   });
 
+  // Log delivered orders
+  console.log("\n--- [SERVER] Delivered Orders for Rider ---");
+  deliveredOrders.forEach((order) => {
+    console.log({
+      _id: order._id,
+      actualDeliveryTime: order.actualDeliveryTime,
+      deliveryFee: order.deliveryFee,
+      total: order.total,
+      createdAt: order.createdAt,
+      items: order.items,
+    });
+  });
+
   const totalEarnings = deliveredOrders.reduce(
     (sum, order) => sum + (order.deliveryFee || 0),
     0
@@ -43,6 +56,18 @@ exports.getEarningsSummary = async (req, res) => {
     0
   );
 
+  // Log expected earnings summary
+  console.log("\n--- [SERVER] Expected Earnings Summary ---");
+  console.log({
+    totalEarnings,
+    totalDeliveries,
+    averageEarning,
+    totalHours,
+    deliveryEarnings,
+    tips,
+    bonuses,
+  });
+
   res.json({
     totalEarnings,
     totalDeliveries,
@@ -65,9 +90,12 @@ exports.getEarningsHistory = async (req, res) => {
       $lte: new Date(endDate),
     };
   }
+  console.log("[EARNINGS HISTORY] riderId:", riderId);
+  console.log("[EARNINGS HISTORY] query:", query);
   const orders = await Order.find(query)
     .skip((page - 1) * limit)
     .limit(Number(limit))
     .sort({ actualDeliveryTime: -1 });
+  console.log("[EARNINGS HISTORY] orders count:", orders.length);
   res.json(orders);
 };

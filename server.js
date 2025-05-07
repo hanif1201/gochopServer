@@ -6,7 +6,6 @@ const socketIO = require("socket.io");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
 const errorHandler = require("./middleware/errorHandler");
-const seedUsers = require("./seeders/userSeeder");
 
 // Load env vars
 dotenv.config();
@@ -112,13 +111,6 @@ const startServer = async () => {
     // Connect to MongoDB first
     const mongoose = await connectDB();
     console.log("MongoDB Connected:", mongoose.connection.host);
-
-    // Only proceed with seeding after successful connection
-    if (mongoose.connection.readyState === 1) {
-      console.log("Starting user seeding...");
-      await seedUsers();
-      console.log("User seeding completed");
-    }
 
     server.listen(PORT, () => {
       console.log(

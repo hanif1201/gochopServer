@@ -20,7 +20,7 @@ router.post(
   "/refresh-token",
   require("../controllers/authController").refreshToken
 );
-router.get("/logout", protect, logout);
+router.post("/logout", protect, logout);
 router.get("/me", protect, getMe);
 router.put("/updatedetails", protect, updateDetails);
 router.put("/updatepassword", protect, updatePassword);
