@@ -128,12 +128,24 @@ exports.getRestaurants = async (req, res, next) => {
 // @access  Public
 exports.getRestaurant = async (req, res, next) => {
   try {
+    console.log("Getting restaurant with ID:", req.params.id);
+
+    if (!req.params.id || req.params.id === "undefined") {
+      console.log("Invalid restaurant ID provided");
+      return res.status(400).json({
+        success: false,
+        message: "Restaurant ID is required",
+      });
+    }
+
     const restaurant = await Restaurant.findById(req.params.id)
       .populate("user", "name email")
       .populate({
         path: "menuItems",
         select: "name description price image category featured available",
       });
+
+    console.log("Restaurant found:", restaurant ? "Yes" : "No");
 
     if (!restaurant) {
       return res.status(404).json({
@@ -147,6 +159,7 @@ exports.getRestaurant = async (req, res, next) => {
       data: restaurant,
     });
   } catch (err) {
+    console.error("Error in getRestaurant:", err);
     next(err);
   }
 };

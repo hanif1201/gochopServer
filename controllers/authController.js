@@ -2,6 +2,7 @@ const User = require("../models/User");
 const config = require("../config/config");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
+const Restaurant = require("../models/Restaurant");
 
 // @desc    Register user
 // @route   POST /api/auth/register
@@ -108,7 +109,7 @@ exports.login = async (req, res, next) => {
     await user.save();
 
     // Generate and return tokens
-    sendTokenResponse(user, 200, res, refreshToken);
+    await sendTokenResponse(user, 200, res, refreshToken);
   } catch (err) {
     console.error("Login error:", err);
     next(err);
@@ -361,8 +362,55 @@ const generateRefreshToken = () => {
 };
 
 // Helper function to get token from model, create cookie and send response
-const sendTokenResponse = (user, statusCode, res, refreshToken) => {
+const sendTokenResponse = async (user, statusCode, res, refreshToken) => {
   const token = user.getSignedJwtToken();
+
+  // Get restaurant ID if user is a restaurant owner
+  let restaurantId = null;
+  if (user.role === config.roles.RESTAURANT) {
+    console.log(
+      "User is a restaurant owner, finding associated restaurant...",
+      {
+        userId: user._id,
+        userRole: user.role,
+      }
+    );
+
+    try {
+      const restaurant = await Restaurant.findOne({ user: user._id });
+      console.log("Restaurant search result:", {
+        found: !!restaurant,
+        restaurantId: restaurant?._id,
+        restaurantName: restaurant?.name,
+        searchQuery: { user: user._id },
+      });
+
+      if (restaurant) {
+        restaurantId = restaurant._id;
+      } else {
+        console.log(
+          "No restaurant found for user. Checking if restaurant exists in database..."
+        );
+        const allRestaurants = await Restaurant.find({});
+        console.log(
+          "All restaurants in database:",
+          allRestaurants.map((r) => ({
+            id: r._id,
+            userId: r.user,
+            name: r.name,
+          }))
+        );
+      }
+    } catch (error) {
+      console.error("Error finding restaurant:", error);
+    }
+  } else {
+    console.log("User is not a restaurant owner:", {
+      userId: user._id,
+      userRole: user.role,
+    });
+  }
+
   const response = {
     success: true,
     token,
@@ -375,10 +423,23 @@ const sendTokenResponse = (user, statusCode, res, refreshToken) => {
       isSuperAdmin: user.isSuperAdmin,
       address: user.address,
       location: user.location,
+      restaurantId, // Include restaurant ID if user is a restaurant owner
     },
   };
   if (refreshToken) {
     response.refreshToken = refreshToken;
   }
+
+  console.log("Sending response to frontend:", {
+    success: response.success,
+    hasToken: !!response.token,
+    user: {
+      id: response.user.id,
+      role: response.user.role,
+      hasRestaurantId: !!response.user.restaurantId,
+      restaurantId: response.user.restaurantId,
+    },
+  });
+
   res.status(statusCode).json(response);
 };
